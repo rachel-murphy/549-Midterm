@@ -9,6 +9,7 @@ phd1$thal <- as.numeric(phd1$thal)
 head(phd)
 ```
 hi 
+how are you?
 
 ```{r}
 library("gplots")
