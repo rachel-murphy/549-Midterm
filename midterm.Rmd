@@ -1,0 +1,814 @@
+---
+title: "STAT 449/549 Midterm Project"
+output:
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 9999)
+library(gt)
+library(Hmisc)
+library(tidyverse)
+```
+
+
+```{r, include=FALSE}
+# 538
+gt_theme_538 <- function(data,...) {
+  data %>%
+  opt_all_caps()  %>%
+  opt_table_font(
+    font = list(
+      google_font("Chivo"),
+      default_fonts()
+    )
+  ) %>%
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "transparent", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        # This is a relatively sneaky way of changing the bottom border
+        # Regardless of data size
+        rows = nrow(data$`_data`)
+      )
+    )  %>% 
+  tab_options(
+    column_labels.background.color = "white",
+    table.border.top.width = px(3),
+    table.border.top.color = "transparent",
+    table.border.bottom.color = "transparent",
+    table.border.bottom.width = px(3),
+    column_labels.border.top.width = px(3),
+    column_labels.border.top.color = "transparent",
+    column_labels.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    data_row.padding = px(3),
+    source_notes.font.size = 12,
+    table.font.size = 16,
+    heading.align = "left",
+    ...
+  ) 
+}
+
+```
+
+Your midterm must be submitted in R Markdown and Word formats. I will not grade midterms in other formats. Your responses must be supported by both textual explanations and the code you generate to produce your result. 
+
+During this project you will produce a paper presenting an application of multivariate statistical methods to the data described below. The paper should include:
+
+- Description of data
+- Presentation of statistical analysis of data
+    - Methods: what analyses were done and why. If there is any challenge in analysis, describe your approach to tackle the problem.
+    - Results: No computer output, but a small number of tailored tables and graphics may be appropriate. (You should embed code in your report, but set `echo=FALSE` to suppress the code. You may need other methods to suppress warnings, etc.)
+- Conclusion: Convey your findings to broader audience.
+
+The paper should not exceed 5 pages, including figures and tables, and must begin with an appropriate title highlighting the topic and analysis. Keep in mind that the report should be written for two audiences: the medical researchers, who have a sense for numbers but are not experts in statistics; and your own supervisor in the biostatistics department, who will be judging you and deciding on your possible promotion based on the statistical competency of
+the report. Your report should be understandable and meaningful to both audiences. See the Grading Rubric for more details.
+
+## The Data and The Questions
+
+You are working as a biostatistian for a hospital system. A team of medical researchers at this hospital have asked you to investigate a historical dataset of patients who were at risk of heart disease. The researchers have provided records for 303 patients across 14 record fields. The data can be found in the file `processed.heartdisease.txt` on Canvas. The fields included are as follows:
+
+```{r}
+df <- readr::read_delim(file = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/data/processed.heartdisease.txt",
+                  delim = ",")
+
+df
+```
+
+```{r}
+df[df$ca=="?", ]
+
+df[df$thal=="?", ]
+
+
+```
+
+
+
+1. age: age in years 
+
+
+```{r}
+barplot(table(df[, 1]))
+```
+
+
+2. sex: sex (1=male, 0=female)
+
+```{r}
+barplot(table(df[, 2]))
+```
+
+
+ 
+3. cp: chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)
+
+```{r}
+barplot(table(df[, 3]))
+```
+
+
+
+4. trestbps: resting blood pressure (in mm Hg on admission to the hospital)
+
+```{r}
+barplot(table(df[, 4]))
+```
+
+
+
+5. chol: serum cholesterol in mg/dl
+
+```{r}
+barplot(table(df[, 5]))
+```
+
+
+
+6. fbs: fasting blood sugar > 120 mg/dl (1=true, 0=false)
+
+```{r}
+barplot(table(df[, 6]))
+```
+
+
+
+7. restecg: resting electrocardiographic results (0: normal; 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV); 2: showing probable or definite left ventricular hypertrophy by Estes' criteria) 
+
+```{r}
+barplot(table(df[, 7]))
+```
+
+
+
+8. thalach: maximum heart rate achieved
+
+```{r}
+barplot(table(df[, 8]))
+```
+
+
+
+9. exang: exercise induced angina (1=yes, 0=no)
+
+```{r}
+barplot(table(df[, 9]))
+```
+
+
+
+10. oldpeak: ST depression induced by exercise relative to rest 
+
+```{r}
+barplot(table(df[, 10]))
+```
+
+
+
+11. slope: the slope of the peak exercise ST segment (1. upsloping; 2. flat; 3. downsloping)
+
+```{r}
+barplot(table(df[, 11]))
+```
+
+
+
+12. ca: number of major vessels (0-3) colored by flourosopy 
+
+```{r}
+table(df[, 12])
+
+barplot(table(df[, 12]))
+```
+
+
+
+13. thal (3: normal; 6: fixed defect; 7: reversible defect)
+
+```{r}
+table(df[, 13])
+
+barplot(table(df[, 13]))
+```
+
+
+
+14. num: diagnosis of heart disease (angiographic disease status) (0: no heart disease; 1-4: increasing levels of heart disease severity)
+
+```{r}
+barplot(table(df[, 14]))
+```
+
+Fixing up the df:
+
+-column 'thal' uses numbers for group names, but should be a factor since those are categorical measures that are not 'increasing' per say.
+
+-column 'ca' is currently using strings, although it is a numeric
+
+```{r}
+# make full data
+data_full <- readr::read_delim(file = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/data/processed.heartdisease.txt",
+                  delim = ",")
+dim(data_full)
+
+# remove na/? values in the data
+df <- data_full[data_full$thal!="?" & data_full$ca!="?", ]
+
+# make sure 'thal' is a factor
+df$thal <- as.factor(df$thal)
+
+# make sure 'ca' is numeric
+df$ca <- as.numeric(df$ca)
+
+df
+```
+
+
+
+The questions that the medical researchers would like answered include:
+
+1. Are there notable associations/relationships between some of the variables? Are there any meaningful groups of variables that exhibit these associations? If so, describe them.
+
+```{r}
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+
+
+res2<-rcorr(as.matrix(df))
+flattenCorrMatrix(res2$r, res2$P) %>%
+  arrange(desc(cor))
+```
+
+
+
+Since the variable of concern is the level of heart disease, looking and seeing how the other 13 variables correlate/associate with that 'num' column is important.
+
+```{r}
+df
+
+df_summary <- df %>%
+  group_by(num) %>%
+  summarise(n=n(),
+            age_average = mean(age), # age
+            sex_proportion = mean(sex), # 1=male, 0=female
+            # not sure for cp - cp: chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)
+            trestbps_average = mean(trestbps), # trestbps = resting blood pressure
+            cholesterol_average = mean(chol), # cholesterol
+            fbs_proportion = mean(fbs), # fbs=fastening blood sugar: (1=true, 0=false)
+            # not sure for restecg resting electrocardiographic results (0: normal; 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV); 2: showing probable or definite left ventricular hypertrophy by Estes' criteria) 
+            thalach_average = mean(thalach), # thalach=maximum heart rate achieved
+            exang_proportion = mean(exang), # exercise induced angina: 1=yes, 0=no
+            oldpeak_average = mean(oldpeak), # ST depression induced by exercise relative to rest
+            slope_average = mean(slope), # slope of the peak exercise ST segment (1. upsloping; 2. flat; 3. downsloping)
+            ca_average = mean(ca) # number of major vessels (0-3) colored by flourosopy 
+            # not sure for thal - (3: normal; 6: fixed defect; 7: reversible defect)
+
+            )
+
+df_summary$num <- factor(df_summary$num, levels = c(0:4), labels = c("0: none", "level 1", "level 2", "level 3", "4: most severe"))
+
+df_summary
+```
+
+for cp (chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)):
+
+-as heart disease severity worsens, probability of asymptomatic chest pain type skyrockets
+
+-if you have any level (1-4) of heart disease: asymptomatic chest pain type skyrockets
+
+-if you are level 0 (none): non-anginal chest pain
+
+```{r}
+cp_df <- tibble("heart_disease" = c("0: none","level 1","level 2","level 3","4: most severe"),
+       'one' = c(0.10, 0.09, 0.03, 0.00, 0.08),
+       'two' = c(0.25, 0.11, 0.03, 0.06, 0.00),
+       'three' = c(0.41, 0.17, 0.11, 0.11, 0.08),
+       'four' = c(0.24, 0.63, 0.83, 0.83, 0.85)
+       )
+
+gt1 <- cp_df %>%
+  gt() %>%
+  cols_label(
+    heart_disease = "",
+    one = "1",
+    two = "2",
+    three = "3",
+    four = "4"
+  ) %>%
+  tab_source_note(
+    source_note = md("Figure: Myles Thomas")
+  ) %>%
+  tab_header(title = md("**Chest pain type by heart disease level**"),
+             subtitle = md("(1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)")) %>%
+  gt_theme_538() %>%
+    data_color(
+    columns = c(one),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(two),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(three),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(four),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  tab_spanner(
+    label = "Chest pain type proportions",
+    columns = c(one:four)
+  ) %>%
+  tab_spanner(
+    label = "Heart disease level",
+    columns = c(heart_disease)
+  ) %>%
+    tab_options(
+      column_labels.background.color = "white",
+      column_labels.font.weight = "bold",
+      table.border.top.width = px(3),
+      table.border.top.color = "transparent",
+      table.border.bottom.color = "transparent",
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = "transparent",
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = "black",
+      data_row.padding = px(3),
+      source_notes.font.size = 12,
+      table.font.size = 16,
+      heading.align = "left"#, ...
+    ) %>%
+    opt_table_font(
+      font = list(
+        default_fonts()
+      )
+    )
+
+# save
+gt::gtsave(data = gt1,
+           filename = "chest-pain.png",
+           path = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs")
+
+# print for knit
+knitr::include_graphics("C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs/chest-pain.png",
+                        error = FALSE)
+
+gt1
+```
+
+```{r, include=FALSE}
+table(df[df$num==0, ]$cp) %>% prop.table() %>% round(2)
+table(df[df$num==1, ]$cp) %>% prop.table() %>% round(2)
+table(df[df$num==2, ]$cp) %>% prop.table() %>% round(2)
+table(df[df$num==3, ]$cp) %>% prop.table() %>% round(2)
+table(df[df$num==4, ]$cp) %>% prop.table() %>% round(2)
+
+
+```
+for restecg - resting electrocardiographic results (0: normal; 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV); 2: showing probable or definite left ventricular hypertrophy by Estes' criteria) 
+
+- ST-t wave abnormality is rare throughout 
+
+- as heart disease worsens, proportion of 0-normal lessens; proportion of 2-showing left ventricular hypertrophy increases
+
+```{r, include=FALSE}
+table(df[df$num==0, ]$restecg) %>% prop.table() %>% round(2)
+table(df[df$num==1, ]$restecg) %>% prop.table() %>% round(2)
+table(df[df$num==2, ]$restecg) %>% prop.table() %>% round(2)
+table(df[df$num==3, ]$restecg) %>% prop.table() %>% round(2)
+table(df[df$num==4, ]$restecg) %>% prop.table() %>% round(2)
+```
+
+
+```{r}
+restecg_df <- tibble("heart_disease" = c("0: none","level 1","level 2","level 3","4: most severe"),
+       'zero' = c(0.57, 0.43, 0.51, 0.34, 0.15),
+       'one' = c(0.01, 0.00, 0.03, 0.03, 0.08),
+       'two' = c(0.42, 0.57, 0.46, 0.63, 0.77)
+       )
+```
+
+
+```{r}
+gt2 <- restecg_df %>%
+  gt() %>%
+  cols_label(
+    heart_disease = "",
+    zero = "0",
+    one = "1",
+    two = "2"
+  ) %>%
+  tab_source_note(
+    source_note = md("Figure: Myles Thomas")
+  ) %>%
+  tab_header(title = md("**Resting electrocardiographic results by heart disease level**"),
+             subtitle = md("0: normal -- 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV) -- 2: showing probable or definite left ventricular hypertrophy by Estes' criteria")) %>%
+  gt_theme_538() %>%
+    data_color(
+    columns = c(one),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(two),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(zero),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  tab_spanner(
+    label = "Resting electrocardiographic results proportions",
+    columns = c(zero:two)
+  ) %>%
+  tab_spanner(
+    label = "Heart disease level",
+    columns = c(heart_disease)
+  ) %>%
+    tab_options(
+      column_labels.background.color = "white",
+      column_labels.font.weight = "bold",
+      table.border.top.width = px(3),
+      table.border.top.color = "transparent",
+      table.border.bottom.color = "transparent",
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = "transparent",
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = "black",
+      data_row.padding = px(3),
+      source_notes.font.size = 12,
+      table.font.size = 16,
+      heading.align = "left"#, ...
+    ) %>%
+    opt_table_font(
+      font = list(
+        default_fonts()
+      )
+    )
+
+# save
+gt::gtsave(data = gt2,
+           filename = "resting-electrocardiographic-results.png",
+           path = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs")
+
+# print for knit
+knitr::include_graphics("C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs/resting-electrocardiographic-results.png",
+                        error = FALSE)
+
+gt2
+```
+
+
+for thal - (3: normal; 6: fixed defect; 7: reversible defect)
+
+as heart disease worsens...
+
+-proportion of normal plummets
+
+-fixed defect increases slightly, but really doesn't change much
+
+-proportion of reversible effect skyrockets
+
+```{r, include=FALSE}
+table(df[df$num==0, ]$thal) %>% prop.table() %>% round(2)
+table(df[df$num==1, ]$thal) %>% prop.table() %>% round(2)
+table(df[df$num==2, ]$thal) %>% prop.table() %>% round(2)
+table(df[df$num==3, ]$thal) %>% prop.table() %>% round(2)
+table(df[df$num==4, ]$thal) %>% prop.table() %>% round(2)
+```
+
+
+```{r}
+thal_df <- tibble("heart_disease" = c("0: none","level 1","level 2","level 3","4: most severe"),
+       'three' = c(0.79, 0.41, 0.20, 0.17, 0.15),
+       'six' = c(0.04, 0.06, 0.17, 0.03, 0.15),
+       'seven' = c(0.17, 0.54, 0.63, 0.80, 0.69)
+       )
+
+gt3 <- thal_df %>%
+  gt() %>%
+  cols_label(
+    heart_disease = "",
+    three = "3",
+    six = "6",
+    seven = "7"
+  ) %>%
+  tab_source_note(
+    source_note = md("Figure: Myles Thomas")
+  ) %>%
+  tab_header(title = md("**THAL by heart disease level**"),
+             subtitle = md("(3: normal; 6: fixed defect; 7: reversible defect)")) %>%
+  gt_theme_538() %>%
+    data_color(
+    columns = c(three),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(six),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  data_color(
+    columns = c(seven),
+    colors = scales::col_numeric(
+      domain = c(0, 1),
+      palette = c("#f8fcf8", "steelblue2") 
+    )
+  ) %>%
+  tab_spanner(
+    label = "THAL proportions",
+    columns = c(three:seven)
+  ) %>%
+  tab_spanner(
+    label = "Heart disease level",
+    columns = c(heart_disease)
+  ) %>%
+    tab_options(
+      column_labels.background.color = "white",
+      column_labels.font.weight = "bold",
+      table.border.top.width = px(3),
+      table.border.top.color = "transparent",
+      table.border.bottom.color = "transparent",
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = "transparent",
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = "black",
+      data_row.padding = px(3),
+      source_notes.font.size = 12,
+      table.font.size = 16,
+      heading.align = "left"#, ...
+    ) %>%
+    opt_table_font(
+      font = list(
+        default_fonts()
+      )
+    )
+
+# save
+gt::gtsave(data = gt3,
+           filename = "THAL-results.png",
+           path = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs")
+
+# print for knit
+knitr::include_graphics("C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/Projects/midterm/figs/THAL-results.png",
+                        error = FALSE)
+
+
+gt3
+```
+
+
+
+
+```{r}
+# class representation
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = n,
+               color=num,
+               fill=num)) + 
+  labs(title = "n (class representation)") + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# age average
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = age_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average age") +
+  coord_cartesian(ylim = c(50, 60)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# sex proportion
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = sex_proportion,
+               color=num,
+               fill=num)) + 
+  labs(title = "sex proportion (male=1, female=0)") +
+  coord_cartesian(ylim = c(0, 1)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# resting blood pressure average
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = trestbps_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "resting blood pressure average") +
+  coord_cartesian(ylim = c(125, 140)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# cholesterol average
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = cholesterol_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average cholesterol") +
+  coord_cartesian(ylim = c(235, 265)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# fastening blood sugar proportion
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = fbs_proportion,
+               color=num,
+               fill=num)) + 
+  labs(title = "fastening blood sugar proportion(1=true, 0=false)") +
+  coord_cartesian(ylim = c(0, 1)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# average max heart rate achieved
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = thalach_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average max heart rate achieved") +
+  coord_cartesian(ylim = c(125, 160)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# exercise induced angina proportion: 1=yes, 0=no
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = exang_proportion,
+               color=num,
+               fill=num)) + 
+  labs(title = "exercise induced angina proportion") +
+  coord_cartesian(ylim = c(0, 1)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# average ST depression induced by exercise relative to rest
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = oldpeak_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average ST depression induced by exercise relative to rest") + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# average slope of the peak exercise ST segment (1. upsloping; 2. flat; 3. downsloping)
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = slope_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average slope of the peak exercise ST segment \n(1. upsloping; 2. flat; 3. downsloping)") +
+  coord_cartesian(ylim = c(1, 2.2)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+# average number of major vessels (0-3) colored by flourosopy 
+df_summary %>%
+  ggplot() + 
+  geom_col(aes(x = num,
+               y = ca_average,
+               color=num,
+               fill=num)) + 
+  labs(title = "average number of major vessels (0-3) colored by flourosopy") +
+  coord_cartesian(ylim = c(0, 1.75)) + 
+  scale_fill_manual(values=c("black", "coral4", "firebrick4", "red2", "hotpink")) + 
+  scale_color_manual(values = c("black", "coral4", "firebrick4", "red2", "hotpink")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+
+
+```
+
+
+
+
+
+2. Is there a way to graphically represent the raw data for the 303 patients and draw conclusions about the data set from such a graph?
+
+
+3. What are the basic underlying groups that the individuals form? Can you plot the data in a small number of dimensions, showing the group separation of the patients?
+
+
+4. Are there interesting differences in any of the recorded fields with respect to heart disease diagnosis? 
+
+Most of the variables followed a linear trend, or seemingly no trend at all.
+
+*bring in some figures from above to show this answer*
+
+```{r}
+
+```
+
+
+
+5. If the researchers were to investigate a new patient observation that had known measurements for the 13 explanatory variables, could we determine a rule for predicting that patient's heart disease status (no heart disease vs presence of heart disease)? How accurate could you expect such a rule to be?
+
+```{r}
+colnames(df)
+```
+
+
+
+6. In particular, we have a new patient who is a 60 year old female. Her symptoms are non-anginal pain, a resting blood pressure of 102 mm Hg, a cholesterol measurement of 318 mg/dl, low fasting blood sugar, normal resting electrocardiographic results, a maximum heart rate of 160 beats/minute, no exercise-induced angina, no ST depression induced by exercise relative to rest, upsloping peak ST segment, only 1 colored major vessel, and normal thal diagnosis. Would you predict this patient to have heart disease? How confident are you in the classification?
+
+```{r}
+new_patient <- dplyr::tibble(age=60,
+                             sex=0,
+                             cp=3,
+                             trestbps=102,
+                             chol=318,
+                             fbs=0,
+                             restecg=0,
+                             thalach=160,
+                             exang=9,
+                             oldpeak=0,
+                             slope=1,
+                             ca=1,
+                             thal=3
+                             )
+new_patient
+```
+
+
+
+7. (For STAT 549 Students) Can you extend the analyses the previous two questions (Questions 5 and 6) to predict patient outcome severity (rather than just presence/absence)? How confident are you in these classifications, particularly in comparison to the presence/absence classifications?
+
+Yes, extending the analysis is possible by using non-binary classification models. The confidence will go down, considering there are 5 outcomes classes to correctly predict instead of just 2 in the presence/absence case.
+
+
+8. What are any other potentially interesting aspects of the data set?
+
