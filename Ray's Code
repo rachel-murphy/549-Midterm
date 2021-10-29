@@ -8,7 +8,7 @@ phd1$ca <- as.numeric(phd1$ca)
 phd1$thal <- as.numeric(phd1$thal)
 head(phd)
 ```
-
+hi 
 
 ```{r}
 library("gplots")
