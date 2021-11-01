@@ -1,1 +1,34 @@
+# load the dataset and change all variable types to integers so that the correlations work. then produce the correlation matrix
+hd <- read.csv("processed.heartdisease.txt")
+head(hd)
 
+hdInteger<-hd[,which(sapply(hd, class) == "integer")]
+res <- cor(hdInteger)
+round(res, 2)
+
+
+# scatterplot matrix, with correlation lines
+pairs(hdInteger,
+  panel = function (x, y, ...) {
+    points(x, y, ...)
+    abline(lm(y ~ x), col = "red", lwd=3)
+    }, 
+  pch = ".", cex = 5)
+  
+  
+  # glm formula
+  glm.fit.hd <- glm(num ~., data=hdInteger)
+summary(glm.fit.hd)
+vif(glm.fit.hd)
+
+# initializing new patient data for prediction
+newobs <- rbind( c(60,0,3,102,318,0,0,160,0,0,1,1.0,3.0) )
+dimnames(newobs) <- list(NULL,c('age','sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'))
+newobs <- data.frame(newobs)
+predict(glm.fit.hd,newdata=newobs, type='response')
+
+# changing cut off level
+group.probs<-predict(glm.fit.hd, hd, type='response')
+pred.group <- rep(0,times=nrow(hd))
+pred.group[group.probs > 0.5] <- 1 
+table(pred.group,hd$num)
