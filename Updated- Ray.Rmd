@@ -12,11 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 phd <-read.csv("processed.heartdisease.txt")
 phd1 <- phd
-phd1$ca<-replace(phd1$ca,phd1$ca == "?",0.0)
-phd1$thal<-replace(phd1$thal,phd1$thal == "?",3.0)
+phd1$ca<-replace(phd1$ca,phd1$ca == "?","")
+phd1$thal<-replace(phd1$thal,phd1$thal == "?","")
 phd1$ca <- as.numeric(phd1$ca)
 phd1$thal <- as.numeric(phd1$thal)
-head(phd)
+phd1 <- phd1 %>% mutate(pres = ifelse(num == 0,0,1))
+head(phd1)
 ```
 hi 
 how are you?
@@ -24,15 +25,15 @@ how are you?
 ```{r}
 library("gplots")
 
-pairs(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach", "ca")],
+pairs(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")],
   panel = function (x, y, ...) {
     points(x, y, ...)
     abline(lm(y ~ x), col = "red", lwd=3)
     }, 
   pch = ".", cex = 5, upper.panel = NULL)
-cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach", "ca")])
-heatmap.2(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach","ca")]), Rowv = FALSE, Colv = FALSE, dendrogram = "none", 
-          cellnote = round(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach", "ca")]),2), 
+cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")])
+heatmap.2(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")]), Rowv = FALSE, Colv = FALSE, dendrogram = "none", 
+          cellnote = round(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")]),2), 
           notecol = "black", key = FALSE, trace = 'none',
           margins = c(6,6))
 ```
@@ -46,7 +47,7 @@ Note: continuous: age, oldpeak,chol, trestbps, thalach
 
 ```{r}
 library(ggplot2)
-phd1$num <- as.factor(phd1$num)
+phd1$pres <- as.factor(phd1$pres)
 phd1$sex <- as.factor(phd1$sex)
 phd1$cp <- as.factor(phd1$cp)
 phd1$fbs <- as.factor(phd1$fbs)
@@ -55,12 +56,12 @@ phd1$exang <- as.factor(phd1$exang)
 phd1$slope <- as.factor(phd1$slope)
 phd1$ca <- as.factor(phd1$ca)
 phd1$thal <- as.factor(phd1$thal)
-qplot(age, chol, data = phd, color = num) #does not seem to hold an exact separation
-qplot(age, trestbps, data = phd, color = num) #does not seem to hold an exact separation
-qplot(age, oldpeak, data = phd, color = num) # does seem to hold a slight separation 
-qplot(age, thalach, data = phd, color = num)
-qplot(oldpeak, thalach, data = phd, color = num)
-qplot(trestbps, thalach, data = phd, color = num)
+qplot(age, chol, data = phd1, color = pres) #does not seem to hold an exact separation
+qplot(age, trestbps, data = phd1, color = pres) #does not seem to hold an exact separation
+qplot(age, oldpeak, data = phd1, color = pres) # does seem to hold a slight separation 
+qplot(age, thalach, data = phd1, color = pres)
+qplot(oldpeak, thalach, data = phd1, color = pres)
+qplot(trestbps, thalach, data = phd1, color = pres)
 ```
 
 ```{r}
@@ -69,10 +70,15 @@ qplot(trestbps, thalach, data = phd, color = num)
 
 
 ```{r}
-cphd.pc <- princomp(phd[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
+cphd.pc <- princomp(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
 summary(cphd.pc, loadings=T)
 ```
 
+```{r}
+cphd.pc <- princomp(distmatrix, cor=T)
+summary(cphd.pc, loadings=T)
+
+```
 
 
 ```{r}
@@ -85,5 +91,26 @@ ggplot2::autoplot(cphd.pc, label = TRUE, loadings.label = TRUE)
 ```{r}
 library(cluster)
 
-daisy(phd1, metric="gower")
+distmatrix <- scale(daisy(phd1[,-14], metric="gower"))
+
+k<-kmeans(distmatrix, centers=2, iter.max=100, nstart=25)
 ```
+
+
+```{r}
+n <- nrow(distmatrix)
+wss <- rep(0, 10)
+wss[1] <- (n - 1) * sum(apply(distmatrix, 2,var))
+for (i in 2:10){
+  wss[i] <- sum(kmeans(distmatrix, centers = i, iter.max=100, nstart=25)$withinss)
+  plot(1:10, wss, type = "b", xlab = "Number of clusters", ylab = "Within groups sum of squares")
+}
+```
+
+
+```{r}
+clusplot(distmatrix, k$cluster, color=TRUE, shade=TRUE, 
+    labels=2, lines=0, main = "Prescence and Absence Grouping with Kmeans")
+```
+
+
