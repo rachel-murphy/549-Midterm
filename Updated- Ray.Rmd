@@ -40,9 +40,6 @@ heatmap.2(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")]), Rowv =
 
 Note: continuous: age, oldpeak,chol, trestbps, thalach
 
-```{r}
-
-```
 
 
 ```{r}
@@ -65,7 +62,7 @@ qplot(trestbps, thalach, data = phd1, color = pres)
 ```
 
 ```{r}
-
+ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres, shape = exang)) + theme_classic()
 ```
 
 
@@ -111,6 +108,8 @@ for (i in 2:10){
 ```{r}
 clusplot(distmatrix, phd1$pres, color=TRUE, shade=TRUE, 
     labels=2, lines=0, main = "Prescence and Absence Grouping")
+clusplot(distmatrix, k$cluster, color=TRUE, shade=TRUE, 
+    labels=2, lines=0, main = "Two Groupings of Kmeans")
 ```
 
 
