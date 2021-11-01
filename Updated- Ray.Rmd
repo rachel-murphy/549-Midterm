@@ -109,8 +109,8 @@ for (i in 2:10){
 
 
 ```{r}
-clusplot(distmatrix, k$cluster, color=TRUE, shade=TRUE, 
-    labels=2, lines=0, main = "Prescence and Absence Grouping with Kmeans")
+clusplot(distmatrix, phd1$pres, color=TRUE, shade=TRUE, 
+    labels=2, lines=0, main = "Prescence and Absence Grouping")
 ```
 
 
