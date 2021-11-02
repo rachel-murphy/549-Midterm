@@ -59,8 +59,7 @@ cut <- seq(from=.01,to=.99,by=.01)
 accuracy.df <- data.frame(Probability = cut, Accuracy = rep(0, length(cut)))
 
 for(i in 1:length(cut)) {
-accuracy.df[i,2] <- confusionMatrix(as.factor(ifelse(pred.train > cut[i],
-                                                     1, 0)),
+accuracy.df[i,2] <- confusionMatrix(as.factor(ifelse(pred.train > cut[i], 1, 0)),
                                     as.factor(train.df$heartDisease),
                                     positive="1")$overall[1]
 }
