@@ -73,8 +73,7 @@ the report. Your report should be understandable and meaningful to both audience
 You are working as a biostatistian for a hospital system. A team of medical researchers at this hospital have asked you to investigate a historical dataset of patients who were at risk of heart disease. The researchers have provided records for 303 patients across 14 record fields. The data can be found in the file `processed.heartdisease.txt` on Canvas. The fields included are as follows:
 
 ```{r}
-df <- readr::read_delim(file = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/data/processed.heartdisease.txt",
-                  delim = ",")
+df <-read.csv("processed.heartdisease.txt")
 
 df
 ```
@@ -211,8 +210,7 @@ Fixing up the df:
 
 ```{r}
 # make full data
-data_full <- readr::read_delim(file = "C:/Users/Myles/OneDrive/Documents/UWL/STAT 549 Baumann/data/processed.heartdisease.txt",
-                  delim = ",")
+data_full <-read.csv("processed.heartdisease.txt")
 dim(data_full)
 
 # remove na/? values in the data
@@ -287,6 +285,34 @@ df_summary$num <- factor(df_summary$num, levels = c(0:4), labels = c("0: none", 
 df_summary
 ```
 
+```{r}
+df <- df %>% mutate(pres = ifelse(num == 0,1,2))
+
+df_summary <- df %>%
+  group_by(pres) %>%
+  summarise(n=n(),
+            age_average = mean(age), # age
+            sex_proportion = mean(sex), # 1=male, 0=female
+            # not sure for cp - cp: chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)
+            cp_average = mean(cp),
+            trestbps_average = mean(trestbps), # trestbps = resting blood pressure
+            cholesterol_average = mean(chol), # cholesterol
+            fbs_proportion = mean(fbs), # fbs=fastening blood sugar: (1=true, 0=false)
+            # not sure for restecg resting electrocardiographic results (0: normal; 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV); 2: showing probable or definite left ventricular hypertrophy by Estes' criteria) 
+            thalach_average = mean(thalach), # thalach=maximum heart rate achieved
+            exang_proportion = mean(exang), # exercise induced angina: 1=yes, 0=no
+            oldpeak_average = mean(oldpeak), # ST depression induced by exercise relative to rest
+            slope_average = mean(slope), # slope of the peak exercise ST segment (1. upsloping; 2. flat; 3. downsloping)
+            ca_average = mean(ca) # number of major vessels (0-3) colored by flourosopy 
+            # not sure for thal - (3: normal; 6: fixed defect; 7: reversible defect)
+
+            )
+
+df_summary$num <- factor(df_summary$pres, levels = c(0:1), labels = c("0: none", "level 1"))
+
+df_summary
+```
+
 for cp (chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal pain; 4: asymptomatic)):
 
 -as heart disease severity worsens, probability of asymptomatic chest pain type skyrockets
@@ -296,6 +322,7 @@ for cp (chest pain type (1: typical angina; 2: atypical angina; 3: non-anginal p
 -if you are level 0 (none): non-anginal chest pain
 
 ```{r}
+library
 cp_df <- tibble("heart_disease" = c("0: none","level 1","level 2","level 3","4: most severe"),
        'one' = c(0.10, 0.09, 0.03, 0.00, 0.08),
        'two' = c(0.25, 0.11, 0.03, 0.06, 0.00),

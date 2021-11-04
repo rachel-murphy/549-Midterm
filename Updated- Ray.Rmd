@@ -12,15 +12,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 phd <-read.csv("processed.heartdisease.txt")
 phd1 <- phd
-phd1$ca<-replace(phd1$ca,phd1$ca == "?","")
-phd1$thal<-replace(phd1$thal,phd1$thal == "?","")
+phd1$ca<-replace(phd1$ca,phd1$ca == "?","NA")
+phd1$thal<-replace(phd1$thal,phd1$thal == "?","NA")
 phd1$ca <- as.numeric(phd1$ca)
 phd1$thal <- as.numeric(phd1$thal)
-phd1 <- phd1 %>% mutate(pres = ifelse(num == 0,0,1))
+phd1 <- na.omit(phd1)
+phd1 <- phd1 %>% mutate(pres = ifelse(num == 0,1,2))
 head(phd1)
 ```
-hi 
-how are you?
 
 ```{r}
 library("gplots")
@@ -40,6 +39,14 @@ heatmap.2(cor(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")]), Rowv =
 
 Note: continuous: age, oldpeak,chol, trestbps, thalach
 
+```{r}
+df$thal<-as.numeric(df$thal)
+cor(df)
+heatmap.2(cor(df), Rowv = FALSE, Colv = FALSE, dendrogram = "none", 
+          cellnote = round(cor(df),2), 
+          notecol = "black", key = FALSE, trace = 'none',
+          margins = c(6,6))
+```
 
 
 ```{r}
@@ -62,54 +69,73 @@ qplot(trestbps, thalach, data = phd1, color = pres)
 ```
 
 ```{r}
-ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres, shape = exang)) + theme_classic()
+library(ggthemes)
+library(viridis)
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~cp, labeller = as_labeller(c("1"="Typical Angina", "2"="Atypical Angina", "3"="Non-Anginal Pain","4"="Asymptomatic"))) +scale_color_manual(name = "Presence", labels = c("Absent", "Present"),values = c("#56B4E9", "#CC79A7"))+ xlab("Age")+ylab("Maximum Heart Rate Achieved (thalach)")+ ggtitle("Facet by Chest Pain") + theme_base()
+?facet_wrap()
+ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~thal)
 ```
 
 
 ```{r}
+library(formattable)
 cphd.pc <- princomp(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
-summary(cphd.pc, loadings=T)
+summary(cphd.pc, loadings =T)
+phd2 <- phd1
+phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")] <- scale(phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")])
+
+
+```
+```{r}
+cphd.pc <- princomp(df, cor=T)
+summary(cphd.pc, loadings =T)
+```
+```{r}
+#setwd("C:/Users/murph/Documents/STAT 549/Midterm/549-Midterm")
+#jpeg(filename="Prescence and Absence Grouping.jpeg",width = 800, height = 600)
+clusplot(df, df$pres, color=T, shade=T, 
+    labels=0, lines=0,col.p = "black", col.clus = c("dark green", "dark blue"), main = "Prescence and Absence Grouping")
+#dev.off()
+kdf<-kmeans(df, centers=2, iter.max=100, nstart=25)
+clusplot(df, kdf$cluster, color=TRUE, shade=TRUE, 
+    labels=0, lines=0, col.p = "black", col.clus = c("dark green", "dark blue"), main = "Two Groupings of Kmeans")
 ```
 
 ```{r}
-cphd.pc <- princomp(distmatrix, cor=T)
-summary(cphd.pc, loadings=T)
-
-```
-
-
-```{r}
-library("devtools")
-devtools::install_github("sinhrks/ggfortify")
-library(ggfortify)
-ggplot2::autoplot(cphd.pc, label = TRUE, loadings.label = TRUE)
-```
-
-```{r}
+#rand.index
 library(cluster)
 
-distmatrix <- scale(daisy(phd1[,-14], metric="gower"))
+distmatrix <- daisy(phd1[,-14], metric="gower")
 
 k<-kmeans(distmatrix, centers=2, iter.max=100, nstart=25)
 ```
 
 
 ```{r}
-n <- nrow(distmatrix)
-wss <- rep(0, 10)
-wss[1] <- (n - 1) * sum(apply(distmatrix, 2,var))
-for (i in 2:10){
-  wss[i] <- sum(kmeans(distmatrix, centers = i, iter.max=100, nstart=25)$withinss)
-  plot(1:10, wss, type = "b", xlab = "Number of clusters", ylab = "Within groups sum of squares")
-}
+#setwd("C:/Users/murph/Documents/STAT 549/Midterm/549-Midterm")
+#jpeg(filename="Prescence and Absence Grouping.jpeg",width = 800, height = 600)
+clusplot(distmatrix,diss = T, phd2$pres, color=T, shade=T, 
+    labels=0, lines=0,col.p = "black", col.clus = c("dark green", "dark blue"),  xlim = c(-.8,.8), main = "Prescence and Absence Grouping")
+#dev.off()
+clusplot(distmatrix, k$cluster,diss = T, color=TRUE, shade=TRUE, 
+    labels=0, lines=0, col.p = "black", col.clus = c("dark green", "dark blue"),xlim = c(-.8,.8), main = "Two Groupings of Kmeans")
+```
+
+```{r}
+distmatrix2 <- daisy(phd1[,-15], metric="gower")
+k2<-kmeans(distmatrix, centers=5, iter.max=100, nstart=25)
+
+clusplot(distmatrix2,diss = T, phd2$num, color=T, shade=T, 
+    labels=0, lines=0,col.p = "black",  main = "Prescence and Absence Grouping")
+clusplot(distmatrix2, k2$cluster,diss = T, color=TRUE, shade=TRUE, 
+    labels=0, lines=0, col.p = "black", main = "Two Groupings of Kmeans")
 ```
 
 
 ```{r}
-clusplot(distmatrix, phd1$pres, color=TRUE, shade=TRUE, 
-    labels=2, lines=0, main = "Prescence and Absence Grouping")
-clusplot(distmatrix, k$cluster, color=TRUE, shade=TRUE, 
-    labels=2, lines=0, main = "Two Groupings of Kmeans")
+library(fossil)
+library(fpc)
+cluster.stats(distmatrix,clustering =  phd2$pres, alt.clustering = k$cluster, compareonly=T)
 ```
-
-
