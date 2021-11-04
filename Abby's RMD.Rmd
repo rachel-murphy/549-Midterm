@@ -122,3 +122,63 @@ pred.new.patient
 ifelse(pred.new.patient<max.cut.lr[1,1],"Patient is predicted to not develop heart disease", "Patient is predicted to develop heart disease")
 ```
 
+```{r}
+head(hdInteger)
+hd_part7 <- hdInteger[,-12]
+head(hd_part7)
+```
+
+```{r}
+library(MASS)
+library(Hmisc)
+library(reshape)
+library(foreign)
+library(ggplot2)
+```
+
+```{r}
+# partition
+set.seed(69)  
+train.index7 <- sample(c(1:dim(hd_part7)[1]), dim(hd_part7)[1]*0.5)  
+train.df7 <- hd_part7[train.index7, ]
+holdout7 <- hd_part7[-train.index7, ]
+
+# validation set is 30% of the remaining 50%
+valid.index7 <- sample(c(1:dim(holdout7)[1]), dim(holdout7)[1]*(.3/.5))
+valid.df7 <- holdout7[valid.index7, ]
+test.df7 <- holdout7[-valid.index7, ]
+
+pt7 <- polr(as.factor(num)~., data=train.df7, Hess=TRUE)
+summary(pt7)
+hd_pred <- predict(pt7, train.df7)
+
+mean(hd_pred == train.df7$num)
+
+table(predicted=hd_pred, actual=train.df7$num)
+```
+
+```{r}
+67+7+0+5+2
+67+17+5+3+1+9+7+7+7+3+1+8+7+5+2+1+1
+
+81/151
+```
+right now we're looking at ~54% accuracy on training data.
+
+```{r}
+hd_pred_valid <- predict(pt7, valid.df7)
+
+mean(hd_pred_valid == valid.df7$num)
+
+table(predicted=hd_pred_valid, actual=valid.df7$num)
+```
+
+```{r}
+48+4+0+6+0
+
+48+7+3+2+1+4+4+6+1+1+3+0+3+6+2
+
+58/91
+```
+we're about 64% accurate on the validation set
+
