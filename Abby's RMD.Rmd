@@ -182,3 +182,8 @@ table(predicted=hd_pred_valid, actual=valid.df7$num)
 ```
 we're about 64% accurate on the validation set
 
+```{r}
+pred.new.patient.pt7 <- predict(pt7,newobs,type="probs")
+pred.new.patient.pt7
+```
+based on this model, the new patient has a 93% chance of not developing heart disease of any kind
