@@ -7,6 +7,7 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
 ```{r}
@@ -19,6 +20,8 @@ phd1$thal <- as.numeric(phd1$thal)
 phd1 <- na.omit(phd1)
 phd1 <- phd1 %>% mutate(pres = ifelse(num == 0,1,2))
 head(phd1)
+zero<-phd1 %>% filter(num == 0)
+160/297
 ```
 
 ```{r}
@@ -71,22 +74,17 @@ qplot(trestbps, thalach, data = phd1, color = pres)
 ```{r}
 library(ggthemes)
 library(viridis)
-cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
-          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~cp, labeller = as_labeller(c("1"="Typical Angina", "2"="Atypical Angina", "3"="Non-Anginal Pain","4"="Asymptomatic"))) +scale_color_manual(name = "Presence", labels = c("Absent", "Present"),values = c("#56B4E9", "#CC79A7"))+ xlab("Age")+ylab("Maximum Heart Rate Achieved (thalach)")+ ggtitle("Facet by Chest Pain") + theme_base()
-?facet_wrap()
-ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~thal)
+#?facet_wrap()
+#ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~thal)
 ```
 
 
 ```{r}
-library(formattable)
 cphd.pc <- princomp(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
 summary(cphd.pc, loadings =T)
 phd2 <- phd1
 phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")] <- scale(phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")])
-
-
 ```
 ```{r}
 cphd.pc <- princomp(df, cor=T)
@@ -130,7 +128,7 @@ k2<-kmeans(distmatrix, centers=5, iter.max=100, nstart=25)
 clusplot(distmatrix2,diss = T, phd2$num, color=T, shade=T, 
     labels=0, lines=0,col.p = "black",  main = "Prescence and Absence Grouping")
 clusplot(distmatrix2, k2$cluster,diss = T, color=TRUE, shade=TRUE, 
-    labels=0, lines=0, col.p = "black", main = "Two Groupings of Kmeans")
+    labels=0, lines=0, col.p = "black", main = "Five Groupings of Kmeans")
 ```
 
 
