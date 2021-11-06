@@ -48,6 +48,27 @@ head(hd)
 A principal component analysis (PCA) was done with just the five quantitative variables, since PCA uses Euclidean distances and cannot take into account categorical variables. The following figure shows the output of the method. 
 
 ```{r}
+phd1 <- hd
+phd1 <- phd1 %>% mutate(pres = ifelse(num == 0,1,2))
+phd1$sex <- as.factor(phd1$sex)
+phd1$cp <- as.factor(phd1$cp)
+phd1$fbs <- as.factor(phd1$fbs)
+phd1$restecg <- as.factor(phd1$restecg)
+phd1$exang <- as.factor(phd1$exang)
+phd1$slope <- as.factor(phd1$slope)
+phd1$ca <- as.factor(phd1$ca)
+phd1$thal <- as.factor(phd1$thal)
+phd1$pres <- as.factor(phd1$pres)
+qplot(age, chol, data = phd1, color = pres) #does not seem to hold an exact separation
+qplot(age, trestbps, data = phd1, color = pres) #does not seem to hold an exact separation
+qplot(age, oldpeak, data = phd1, color = pres) # does seem to hold a slight separation 
+qplot(age, thalach, data = phd1, color = pres)
+qplot(oldpeak, thalach, data = phd1, color = pres)
+qplot(trestbps, thalach, data = phd1, color = pres)
+```
+
+
+```{r}
 cphd.pc <- princomp(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
 summary(cphd.pc, loadings =T)
 phd2 <- phd1
@@ -71,6 +92,10 @@ Within the graph above, the presence of heart disease seems to be clustered in t
 Next, the overall data was reimagined into a dissimilarity matrix. This step was necessary to capture all the variables together in two dimensions, as the Gower distance can compute numeric and non-numeric data. The following graphs have the first two components from the Classical (Metric) Multidimensional Scale (MDS) on its x- and y-axis, which can take in dissimilarity matrices, unlike PCA. Even though it captures a low point variability (15.19%), the components still do a decent job visualizing the data in two dimensions, especially since the actual ellipses for the data is relatively similar to the clustering of kmeans with 2 groups. That also implies that the kmeans could detect the associations both between the predictor variables and that of the heart disease variable, well enough to get similar groupings of the patients based on the presence/absence of heart disease. 
 
 ```{r}
+distmatrix <- daisy(phd2[,-14], metric="gower")
+
+k<-kmeans(distmatrix, centers=2, iter.max=100, nstart=25)
+
 #setwd("C:/Users/murph/Documents/STAT 549/Midterm/549-Midterm")
 #jpeg(filename="Prescence and Absence Grouping.jpeg",width = 800, height = 600)
 clusplot(distmatrix,diss = T, phd2$pres, color=T, shade=T, 
@@ -83,6 +108,16 @@ clusplot(distmatrix, k$cluster,diss = T, color=TRUE, shade=TRUE,
 ```
 
   Figure 2: Basic Underlying Groups Visualized in Two Dimensions 
+  
+```{r}
+distmatrix2 <- daisy(phd1[,-15], metric="gower")
+k2<-kmeans(distmatrix, centers=5, iter.max=100, nstart=25)
+
+clusplot(distmatrix2,diss = T, phd2$num, color=T, shade=T, 
+    labels=0, lines=0,col.p = "black",  main = "Prescence and Absence Grouping")
+clusplot(distmatrix2, k2$cluster,diss = T, color=TRUE, shade=TRUE, 
+    labels=0, lines=0, col.p = "black", main = "Five Groupings of Kmeans")
+```
 
 METHODS 
 
