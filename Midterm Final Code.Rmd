@@ -1,0 +1,255 @@
+---
+title: "Midterm Final Code"
+author: "Rachel Murphy"
+date: "11/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggthemes)
+library(cluster)
+library(fossil)
+library(fpc)
+library(MASS)
+library(Hmisc)
+library(reshape)
+library(foreign)
+library(ggplot2)
+library(tidyverse)
+library(caret)
+library(sjmisc)
+library(magrittr)
+```
+
+
+INTRODUCTION 
+
+Heart disease is the leading cause of death in the United States with an average of 1 in 4 deaths taking place from a form of heart disease. It is important, then, to understand the underlying causes of it. Prediction will be at the forefront of this analysis since catching it early on can lead to preventing devastating outcomes. The following variables are going to be explored in relation to the absence/presence of heart disease: age, sex, chest pain type (cp), resting blood pressure (trestbps), serum cholesterol (chol), fasting blood sugar (fbs), resting electrocardiographic results (restecg), maximum heart rate achieved (thalach), exercise induced angina (exang), ST depression induced by exercise relative to rest (oldpeak), the slope of the peak exercise ST segment (slope), number of major vessels colored by flourosopy (ca), thal, and diagnosis of heart disease (num). Following that, a prediction model will be made to detect the absence or presence of heart disease (using logistic regression) and later the intensity of such heart disease if present (ordinal logistic regression). A prediction will then be made on a new patient, using the models that were just created. In the next section, data reduction will occur as the most predictable variables are selected. After which, the predictor variables will be applied to a model to assess where that individual falls both in presence of heart disease and severity of it. Then it will be compared to the original assignment for prediction accuracy. 
+
+DATA EXPLORATION 
+
+There are five quantitative variables present: age, trestbps, chol, oldpeak, and thalach. The rest are analyzed as categorical variables for this section. Another categorical variable was added on to dictate only the absence and presence of the heart disease without the severity indicator. Additional note, all categorical predictor variables can easily be transformed into quantitative scales for easier interpretation into the model later on.  
+
+There was a total of six missing values within the thal and ca variables. Since 303 is a decent sample size and the variables with missing values are categorical variables (meaning an average cannot be easily applied to the missing values), the observations containing the missing values will be eliminated from the analysis from this point on.
+
+```{r}
+# load the dataset and change all variable types to integers so that the correlations work. then produce the correlation matrix
+hd.orig <- read.csv("processed.heartdisease.txt")
+hd<-hd.orig
+hd$ca <- replace(hd$ca,hd$ca=="?","NA")
+hd$thal <- replace(hd$thal,hd$ca=="?","NA")
+hd$ca <- as.numeric(hd$ca)
+hd$thal <- as.numeric(hd$thal)
+hd<-na.omit(hd)
+head(hd)
+```
+
+A principal component analysis (PCA) was done with just the five quantitative variables, since PCA uses Euclidean distances and cannot take into account categorical variables. The following figure shows the output of the method. 
+
+```{r}
+cphd.pc <- princomp(phd1[,c("age", "trestbps", "chol", "oldpeak", "thalach")], cor=T)
+summary(cphd.pc, loadings =T)
+phd2 <- phd1
+phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")] <- scale(phd2[,c("age", "trestbps", "chol", "oldpeak", "thalach")])
+```
+
+	      Figure 1. Principal Component Analysis Output 
+
+The first component predominately describes the negative correlation between age and thalach with some noise from the other variables in between. The second component has higher associations with chol, with the relationship of trestbps and thalach being the next highest constant, meaning that this component mainly focuses on how well the heart is pumping. The third component is a trestbsp variable with a negative correlation appearing with chol. However, PCA would only reduce the number of variables by two, which does not make up for the added complexity of the three components replacing the five variables. So, all five quantitative variables will be left in the analysis for now.  
+
+Diving into the relationship between variables a little more, the graph below elaborates on the highest quantitative correlated predictor variables, thalach and age (R=-0.39). In addition to visualizing that relationship, the graph also features the variable chest pain. All of which interacts with the presence variable.  
+
+```{r}
+ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~cp, labeller = as_labeller(c("1"="Typical Angina", "2"="Atypical Angina", "3"="Non-Anginal Pain","4"="Asymptomatic"))) +scale_color_manual(name = "Presence", labels = c("Absent", "Present"),values = c("#56B4E9", "#CC79A7"))+ xlab("Age")+ylab("Maximum Heart Rate Achieved (thalach)")+ ggtitle("Facet by Chest Pain") + theme_base()
+#?facet_wrap()
+#ggplot(phd1, aes(age, thalach))+ geom_point(aes(color = pres))+ facet_wrap(~thal)
+```
+
+Within the graph above, the presence of heart disease seems to be clustered in the bottom part of the Asymptomatic scatterplot. This demonstrates that people with heart disease are not showing signs of chest pain to help indicate that there is something wrong, which is interesting and worrisome. Another thing that the Asymptomatic scatterplot suggests is that the older a patient is along with a lower the maximum heart rate achieved can imply the presence of heart disease. A similar pattern is mimicked within the other chest pain categories. 
+
+Next, the overall data was reimagined into a dissimilarity matrix. This step was necessary to capture all the variables together in two dimensions, as the Gower distance can compute numeric and non-numeric data. The following graphs have the first two components from the Classical (Metric) Multidimensional Scale (MDS) on its x- and y-axis, which can take in dissimilarity matrices, unlike PCA. Even though it captures a low point variability (15.19%), the components still do a decent job visualizing the data in two dimensions, especially since the actual ellipses for the data is relatively similar to the clustering of kmeans with 2 groups. That also implies that the kmeans could detect the associations both between the predictor variables and that of the heart disease variable, well enough to get similar groupings of the patients based on the presence/absence of heart disease. 
+
+```{r}
+#setwd("C:/Users/murph/Documents/STAT 549/Midterm/549-Midterm")
+#jpeg(filename="Prescence and Absence Grouping.jpeg",width = 800, height = 600)
+clusplot(distmatrix,diss = T, phd2$pres, color=T, shade=T, 
+    labels=0, lines=0,col.p = "black", col.clus = c("dark green", "dark blue"),  xlim = c(-.8,.8), main = "Prescence and Absence Grouping")
+#dev.off()
+clusplot(distmatrix, k$cluster,diss = T, color=TRUE, shade=TRUE, 
+    labels=0, lines=0, col.p = "black", col.clus = c("dark green", "dark blue"),xlim = c(-.8,.8), main = "Two Groupings of Kmeans")
+
+#cluster.stats(distmatrix,clustering =  phd2$pres, alt.clustering = k$cluster, compareonly=T)
+```
+
+  Figure 2: Basic Underlying Groups Visualized in Two Dimensions 
+
+METHODS 
+
+To begin the modeling, the first step was coercing all variables into the numeric class. Two variables, thal and ca were originally factors. This change is reasonable for the ca variable for sure since ca counts how many major vessels are colored by fluoroscopy. The thal variable on the other hand describes the presence of defects. However, this variable was coerced into a numeric to simplify the model building process and allow for the modeling to be easily understandable. Usually, the simpler model (all quantitative predictor variables) is still powerful while also leaving less room for misinterpretation, especially since the MDS shows a low point variability using categorical predictors (as seen in figure 2). The second step was to partition the data into a training set and a validation set. This helps to avoid overfitting the model to one specific dataset. Once the data was partitioned, a logistic regression model could begin. In order to find which predictor variables provided the most prediction, a stepwise model selection process was used. It is worthwhile to note that this model selection process is not strictly necessary when modeling for prediction purposes. However, this is another way to guard against overfitting of the model to the data. When a model is overfit, it may have high prediction accuracy for the data it was trained on but will do poorly predicting for any other data.  
+
+```{r}
+hd$heartDisease <- ifelse(hd$num > 0,1,0) # making variable for just predicting heart disease, not severity
+head(hd)
+hd_part5 <- hd[,c(1:13,15)] # taking out original variable for heart disease since we won't use it with this model
+head(hd_part5)
+```
+
+```{r}
+# partition
+set.seed(55)  
+train.index <- sample(c(1:dim(hd_part5)[1]), dim(hd_part5)[1]*0.5)  
+train.df <- hd_part5[train.index, ]
+holdout <- hd_part5[-train.index, ]
+
+# validation set is 30% of the remaining 50%
+valid.index <- sample(c(1:dim(holdout)[1]), dim(holdout)[1]*(.3/.5))
+valid.df <- holdout[valid.index, ]
+test.df <- holdout[-valid.index, ] # idk if we really need this partition but thats what was in my notes
+```
+
+```{r}
+# fit the null and full models
+null.model <- glm(heartDisease~1,data=train.df,family="binomial")
+full.model <- glm(heartDisease~.,data=train.df,family="binomial")
+
+# search for best AIC model
+step.out <- step(null.model,scope=list(lower=null.model,upper=full.model),
+                 direction="both")
+# accoring to AIC, the best model is heartDisease ~ exang + sex + cp + thalach + chol + trestbps
+```
+
+```{r}
+# fit the model
+out.train <- glm(heartDisease~exang + ca + thal + thalach + cp + sex + trestbps,
+                 data=train.df,family="binomial")
+head(train.df)
+# get predicted values
+pred.train <- predict(out.train,train.df[,-14],type="response")
+
+# get the confusion matrix
+confusionMatrix(as.factor(ifelse(pred.train > 0.5, 1, 0)),
+                as.factor(train.df$heartDisease),positive="1")
+```
+
+```{r}
+# find the cutoff that provides the highest accuracy               
+cut <- seq(from=.01,to=.99,by=.01)
+
+# initialize a data frame with two columns: k, and accuracy
+accuracy.df <- data.frame(Probability = cut, Accuracy = rep(0, length(cut)))
+
+for(i in 1:length(cut)) {
+accuracy.df[i,2] <- confusionMatrix(as.factor(ifelse(pred.train > cut[i], 1, 0)),
+                                    as.factor(train.df$heartDisease),
+                                    positive="1")$overall[1]
+}
+
+max.cut.lr <- accuracy.df[which.max(accuracy.df[,2]),]
+max.cut.lr
+```
+
+
+Logistic regression can be done in R using the glm() function with family = “binomial”. Then a null model and a full model can each be made to start the stepwise model selection process. In this case, the direction was set to both ways, that is the stepwise selection went forwards and backwards to pick the overall best model. Then, the model with the lowest Akaike information criterion (AIC) was kept for prediction purposes. The AIC is an estimator of prediction error, and therefore relative quality of prediction models. The model with the lowest AIC is chosen to move forward. In this case the model chosen had an AIC of 122.87, and predictor variables of: exang, ca, thal, thalach, cp, sex, and trestbps. The accuracy of prediction can be improved by algorithmically selecting the optimum cutoff threshold. Using a function to run a sequence of cutoff values from 0.01 to 0.99, increasing by 0.01, determined the best cutoff threshold to be 0.47 resulting in the highest accuracy for this model. Using the 0.47 cutoff threshold on the training data produces accurate predictions 85.91% of the time.  
+
+
+```{r}
+confusionMatrix(as.factor(ifelse(pred.train > max.cut.lr[1,1], 1, 0)),
+                as.factor(train.df$heartDisease),positive="1")
+```
+
+Table 1. Confusion Matrix of the Trained Binary Model 
+
+The next step is to run new data, the validation subset that was set aside earlier, through the model. This will assure that this model is not overfit, and therefore only accurate on the training data, as well as tell how accurate the model is on fresh data overall. 
+
+This kind of analysis can be taken beyond just predicting whether a patient does or does not have heart disease. It can also be implemented for predicting the severity of the heart disease if the patient has heart disease. This can be done using ordinal associations.  
+
+```{r}
+# now with validation data
+# fit the model
+out.valid <- glm(heartDisease~thal + ca + oldpeak + cp + sex + restecg,
+                 data=valid.df,family="binomial")
+summary(out.valid)
+
+# get predictions and make classification matrix
+pred.valid <- predict(out.valid,valid.df[,-11],type="response")
+
+confusionMatrix(as.factor(ifelse(pred.valid > max.cut.lr[1,1], 1, 0)),
+                as.factor(valid.df$heartDisease), positive="1")
+```
+
+
+Since severity of heart disease is an ordinal variable, that is ordered categorical, on a 0-4 scale (0 being no heart disease and 4 being severe heart disease) ordinal association is the most appropriate model here. This analysis begins the same as above, the only difference being the function to make the models. Once the data was partitioned into training and validation sets, the polr() function was used to make the null and full models. These were then put through the same stepwise selection process as before. Interestingly, the model with the lowest AIC was different with the ordinal data than with the logistic data. In this case, the predictors were: thal, ca, slope, cp, sex, oldpeak, and age. This shows that, while some predictor variables are good for both, like thal and ca, some were better for logistic modeling, trestbps, and some were better for ordinal modeling, oldpeak. The AIC for this model was 280.79 which was much higher than the AIC for the logistic model. This is to be expected though since this data is ordinal and therefore there is more room for variability. Using the optimum model as determined by the stepwise selection, the model was about 79.19% accurate on the training data.  
+
+
+```{r}
+head(hd)
+hd_part7 <- hd
+head(hd_part7)
+```
+
+```{r}
+# partition
+set.seed(69)  
+train.index7 <- sample(c(1:dim(hd_part7)[1]), dim(hd_part7)[1]*0.5)  
+train.df7 <- hd_part7[train.index7, ]
+holdout7 <- hd_part7[-train.index7, ]
+
+# validation set is 30% of the remaining 50%
+valid.index7 <- sample(c(1:dim(holdout7)[1]), dim(holdout7)[1]*(.3/.5))
+valid.df7 <- holdout7[valid.index7, ]
+test.df7 <- holdout7[-valid.index7, ]
+
+pt7 <- polr(as.factor(num)~., data=train.df7, Hess=TRUE)
+summary(pt7)
+hd_pred <- predict(pt7, train.df7)
+
+mean(hd_pred == train.df7$num)
+
+table(predicted=hd_pred, actual=train.df7$num)
+```
+
+Table 2. Confusion Matrix of the Trained Ordinal Model 
+
+This is lower than what the previous model had, but this is to be expected since the ordinal model has more options than just presence and absence of heart disease. It looks like this model was able to accurately assign absence of heart disease 100% of the time, while the levels of severity had a lower accuracy with group 1 at 81.48%, group 2 at 33.33%, group 3 at 57.89%, and group 4 at 0.00%. This makes sense as the proportions of severity 1-4 are a little less than half of the overall data, meaning that less observations are present to train the model against within each category. 
+
+```{r}
+hd_pred_valid <- predict(pt7, valid.df7)
+
+mean(hd_pred_valid == valid.df7$num)
+
+table(predicted=hd_pred_valid, actual=valid.df7$num)
+```
+
+RESULTS 
+
+In the case of logistic regression modeling, the model was 90.00% accurate on the validation data. This is 4.09% higher than the training data accuracy. The biggest worry when transitioning from training to validation data is overfitting. In this case, a rise of 4.09% accuracy from training to validation data does not show evidence of overfitting. Therefore, all the model building can be considered legitimate, and this model can be used to predict the development of heart disease in new patients. Additionally, in the case of assuming everyone to have heart disease only yield accurate predictions about 53.87% of the time. This is a 36.13% difference from the selected model. 
+
+```{r}
+head(hd_part5)
+# initializing new patient data for prediction
+
+newobs <- rbind( c(60,0,3,102,318,0,0,160,0,0,1,1.0,3.0) )
+dimnames(newobs) <- list(NULL,c('age','sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'))
+newobs.df<-data.frame(newobs)
+head(newobs.df)
+# newobs.df$ca <- factor(newobs.df$ca, levels=levels(hd$ca))
+# newobs.df$thal <- factor(newobs.df$thal, levels=levels(hd$thal))
+
+pred.new.patient <- predict(out.valid,newobs.df,type="response")
+pred.new.patient
+ifelse(pred.new.patient<max.cut.lr[1,1],"Patient is predicted to not develop heart disease", "Patient is predicted to develop heart disease")
+```
+
+Using the logistic model chosen by the stepwise model selection, the new 60-year-old female patient was given a probability of 0.0059 of having heart disease. This is much lower than our prediction cutoff of 0.47 and therefore this patient is not predicted to have heart disease with about 87% confidence.  
+
+For the ordinal model using the validation data, the predictions were about 73.33% accurate. Compared to the 79.19% accuracy of the training data this 5.86% decrease in accuracy is still considered low in this case, and does not show evidence of overfitting. Once again, if all patients were assumed to not have heart disease, that assumption would only be accurate 53.87% of the time, which is 19.46% lower than the selected model.
+
+```{r}
+pred.new.patient.pt7 <- predict(pt7,newobs,type="probs")
+pred.new.patient.pt7
+```
+
+CONCLUSION 
+
+The primary outcome for this analysis was to better predict the presence or absence of heart disease. The secondary outcome was to classify the severity of it if present (on a scale of 0-4, 0 being absent). After looking at the variables from different quantitative and categorical viewpoints and proceeding to put it through models, the avenue took was where all the predictors were quantitative in the final model. The logistic regression validation set was 90.00%, which was higher than the training set, implying that the model was not overfitted. The ordinal model produced 73.33% accuracy because of the smaller number of observations contained in each grouping. The prediction for group 2 and group 4 were worst off, because of it. Overall, though, the two models performed better than the baseline (guessing all of them do not have heart disease) at 53.87% accuracy. 
