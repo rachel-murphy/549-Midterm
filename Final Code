@@ -119,7 +119,7 @@ ifelse(pred.new.patient<max.cut.lr[1,1],"Patient is predicted to not develop hea
 
 ```{r}
 head(hd)
-hd_part7 <- hd
+hd_part7 <- hd[,1:14]
 head(hd_part7)
 ```
 
