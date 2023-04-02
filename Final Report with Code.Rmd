@@ -1,5 +1,5 @@
 ---
-title: "Midterm Final Code"
+title: "Predicting Heart Disease"
 author: "Rachel Murphy, Abby Runge, and Myles Thomas"
 date: "11/5/2021"
 output:
