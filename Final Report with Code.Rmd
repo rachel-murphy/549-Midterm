@@ -1,6 +1,6 @@
 ---
 title: "Predicting Heart Disease"
-author: "Rachel Murphy, Abby Runge, and Myles Thomas"
+author: "Rachel Murphy and Abby Runge"
 date: "11/5/2021"
 output:
   word_document: default
